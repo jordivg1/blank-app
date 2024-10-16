@@ -37,3 +37,49 @@ if calendar_file is not None:
     col4.write("Datos del calendario de fechas señaladas:")
     calendar_data = pd.read_csv(calendar_file)
     col4.dataframe(calendar_data)
+
+if products_file is not None and calendar_file is not None:
+    if st.button("¡Recomiéndame!"):
+        st.subheader("Productos recomendados")
+
+        # Lógica simple de recomendación (esto puede mejorarse con un algoritmo más sofisticado)
+        recommendations = []
+        
+        # Ejemplo: recomendación basada en las ventas más altas en los últimos meses
+        best_selling_products = products_data.iloc[:, -1].sort_values(ascending=False).head(3).index.tolist()
+        for product in best_selling_products:
+            reason = [
+                "Es uno de los productos más vendidos en los últimos meses.",
+                "Su margen de ganancia es alto.",
+                "Tiene alta demanda en fechas específicas."
+            ]
+            product_name = products_data.iloc[product, 0]
+            recommendations.append({"product": product_name, "reasons": reason})
+
+        # Ejemplo: recomendación basada en fechas señaladas (si hay alguna festividad cercana)
+        for _, row in calendar_data.iterrows():
+            if 'Navidad' in row['Evento']:
+                recommendations.append({
+                    "product": "Productos navideños",
+                    "reasons": [
+                        f"Se acerca **{row['Evento']}** ({row['Fecha']}).",
+                        "Los productos navideños suelen incrementar las ventas.",
+                        "Los clientes buscan productos temáticos."
+                    ]
+                })
+
+        # Mostrar las recomendaciones estilizadas
+        cols = st.columns(len(recommendations))  # Crear columnas dinámicamente
+
+        for i, rec in enumerate(recommendations):
+            with cols[i]:
+                st.markdown(f"""
+                    <div style="border: 2px solid #8B0000; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left;">
+                        <h4>{rec['product']}</h4>
+                        <ul>
+                            <li>{rec['reasons'][0]}</li>
+                            <li>{rec['reasons'][1]}</li>
+                            <li>{rec['reasons'][2]}</li>
+                        </ul>
+                    </div>
+                """, unsafe_allow_html=True)
