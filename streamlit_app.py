@@ -73,7 +73,7 @@ def generate_response(products_data, calendar_data):
     También tengo las siguientes fechas señaladas:
     {calendar_data_str}
 
-    Por favor, dame 3 recomendaciones de productos para vender en estas fechas a partir de los datos proporcionados:
+    Por favor, dame 3 recomendaciones de productos en español para vender en estas fechas a partir de los datos proporcionados:
     """
 
     # Llamada a la API de OpenAI usando el modelo GPT
