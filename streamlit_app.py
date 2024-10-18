@@ -2,9 +2,10 @@ import streamlit as st
 import pandas as pd
 from openai import OpenAI
 from pydantic import BaseModel
+import datetime
 
 
-client = OpenAI(api_key=st.secrets["openai_api_key"])
+client = OpenAI(api_key=st.secrets.my_other_secrets.openai_api_key)
 
 st.set_page_config(page_title='vise',  layout='wide')
 
@@ -55,12 +56,17 @@ class RecommendationList(BaseModel):
 
     
 def generate_response(products_data, calendar_data):
+    # Obtener la fecha actual
+    fecha_actual = datetime.datetime.now().strftime("%Y-%m-%d")
+
     # Convertir los DataFrames a string
     products_data_str = products_data.to_string(index=False)
     calendar_data_str = calendar_data.to_string(index=False)
 
-    # Crear el prompt usando los datos de los CSV
+    # Crear el prompt usando los datos de los CSV y la fecha actual
     prompt = f"""
+    Fecha actual: {fecha_actual}
+
     Tengo los siguientes productos con sus ventas mensuales:
     {products_data_str}
 
