@@ -1,5 +1,10 @@
 import streamlit as st
 import pandas as pd
+from openai import OpenAI
+from pydantic import BaseModel
+
+
+client = OpenAI(api_key=st.secrets["openai_api_key"])
 
 st.set_page_config(page_title='vise',  layout='wide')
 
@@ -10,6 +15,8 @@ t2.title("Recomendador de productos para tu local")
 t2.markdown("**| website:** https://viselab.io/")
 
 col1, col2 = st.columns(2)
+
+
 
 # Cargar CSV de productos y ventas
 with col1:
@@ -38,48 +45,64 @@ if calendar_file is not None:
     calendar_data = pd.read_csv(calendar_file)
     col4.dataframe(calendar_data)
 
+
+class Recommendations(BaseModel):
+    product: str
+    reasons: list[str]
+
+class RecommendationList(BaseModel):
+    recommendationList: list[Recommendations]
+
+    
+def generate_response(products_data, calendar_data):
+    # Convertir los DataFrames a string
+    products_data_str = products_data.to_string(index=False)
+    calendar_data_str = calendar_data.to_string(index=False)
+
+    # Crear el prompt usando los datos de los CSV
+    prompt = f"""
+    Tengo los siguientes productos con sus ventas mensuales:
+    {products_data_str}
+
+    También tengo las siguientes fechas señaladas:
+    {calendar_data_str}
+
+    Por favor, dame 3 recomendaciones de productos para vender en estas fechas a partir de los datos proporcionados:
+    """
+
+    # Llamada a la API de OpenAI usando el modelo GPT
+    response = client.beta.chat.completions.parse(model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], response_format=RecommendationList)
+    return response.choices[0].message.parsed
+
+
+
 if products_file is not None and calendar_file is not None:
     if st.button("¡Recomiéndame!"):
+        with st.spinner('Generando recomendaciones...'):  # Añade el spinner de carga
+            recommendation_response = generate_response(products_data, calendar_data)
         st.subheader("Productos recomendados")
+    
 
-        # Lógica simple de recomendación (esto puede mejorarse con un algoritmo más sofisticado)
-        recommendations = []
-        
-        # Ejemplo: recomendación basada en las ventas más altas en los últimos meses
-        best_selling_products = products_data.iloc[:, -1].sort_values(ascending=False).head(3).index.tolist()
-        for product in best_selling_products:
-            reason = [
-                "Es uno de los productos más vendidos en los últimos meses.",
-                "Su margen de ganancia es alto.",
-                "Tiene alta demanda en fechas específicas."
-            ]
-            product_name = products_data.iloc[product, 0]
-            recommendations.append({"product": product_name, "reasons": reason})
+        cols = st.columns(len(recommendation_response.recommendationList))  # Crear columnas dinámicamente
 
-        # Ejemplo: recomendación basada en fechas señaladas (si hay alguna festividad cercana)
-        for _, row in calendar_data.iterrows():
-            if 'Navidad' in row['Evento']:
-                recommendations.append({
-                    "product": "Productos navideños",
-                    "reasons": [
-                        f"Se acerca **{row['Evento']}** ({row['Fecha']}).",
-                        "Los productos navideños suelen incrementar las ventas.",
-                        "Los clientes buscan productos temáticos."
-                    ]
-                })
-
-        # Mostrar las recomendaciones estilizadas
-        cols = st.columns(len(recommendations))  # Crear columnas dinámicamente
-
-        for i, rec in enumerate(recommendations):
+        for i, rec in enumerate(recommendation_response.recommendationList):
             with cols[i]:
                 st.markdown(f"""
-                    <div style="border: 2px solid #8B0000; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left;">
-                        <h4>{rec['product']}</h4>
+                    <div style="
+                        border: 2px solid #8B0000; 
+                        padding: 15px; 
+                        border-radius: 10px; 
+                        margin-bottom: 20px; 
+                        text-align: left;
+                        min-height: 300px;  /* Altura mínima para los cuadros */
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;">
+                        <h4>{rec.product}</h4>
                         <ul>
-                            <li>{rec['reasons'][0]}</li>
-                            <li>{rec['reasons'][1]}</li>
-                            <li>{rec['reasons'][2]}</li>
+                            <li>{rec.reasons[0]}</li>
+                            <li>{rec.reasons[1]}</li>
+                            <li>{rec.reasons[2]}</li>
                         </ul>
                     </div>
                 """, unsafe_allow_html=True)
